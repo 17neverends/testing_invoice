@@ -1,0 +1,344 @@
+<html>
+
+<head>
+    <title>Invoice Calculation</title>
+    <style>
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 100%;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+            /* overflow-y: scroll;  */
+        }
+        
+        h1 {
+            font-size: 20px;
+        }
+        
+        /* Скрыть полосу прокрутки вебкит-браузеров (Chrome, Safari, etc.) */
+        body::-webkit-scrollbar {
+            width: 0.5em; /* Ширина полосы прокрутки */
+          }
+          
+          body::-webkit-scrollbar-track {
+            background-color: transparent; /* Цвет фона полосы прокрутки */
+          }
+          
+          body::-webkit-scrollbar-thumb {
+            background-color: transparent; /* Цвет полосы прокрутки */
+          }
+          
+          /* Скрыть полосу прокрутки в Firefox */
+          body {
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+          }
+          
+        
+        form {
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 1);
+            max-width: 400px;
+            width: 100%;
+            margin: auto;
+            height: 1000px;
+            min-height: 100px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 10px;
+            margin-top: 15px;
+        }
+        
+        .size {
+            display: flex;
+            align-items: center;
+            padding: 5px;
+        }
+        
+        .size input {
+            flex: 1;
+            margin: 0 5px;
+            text-align: center;
+        }
+        
+        * {
+            outline: none;
+        }
+        
+        #title {
+            margin-top: 70px;
+        
+        }
+        .error {
+            border-color: red;
+            outline: none;
+        
+          }
+        input {
+            width: 100%;
+            padding: 15px;
+            background-color: #f5f6f7;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+            font-size: 17px;
+            border: 2px solid #f5f6f7; 
+            transition: border-color 0.5s; 
+            border-radius: 10px;
+            height: 50px;
+            min-height: 50px;
+        }
+        .status {
+            min-height: 20px;
+            display: block;
+            margin-bottom: 20px;
+            color: red;
+            text-align: center;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #1ab248;
+            background-color: transparent;
+        }
+        
+        input:hover {
+            background-color: #e8f7ec;  
+        }
+        
+        #signin_button {
+            background-color: #1ab248;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            cursor: pointer;
+            height: 7vh;
+            width: 100%;
+            margin-top: 40px;
+            border-radius: 10px;
+            font-size: 17px;
+            text-align: center;
+            height: 50px;
+            min-height: 50px;
+        }
+        
+        #signin_button:hover {
+            background-color: #30cc5f;
+        }
+        
+        #signin_button:active {
+            background-color: #158e3a;
+        }
+        
+        #check_pass {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translate(50%, -85%); 
+            background-color: transparent;
+            border: none;
+            height: 100px;
+            width: 100px;
+            cursor: pointer;
+            outline: none;
+            overflow: hidden;
+            transition: fill 0.5s;
+        }
+        
+        #check_pass:hover #hoverable-path path {
+            fill: #1ab248;
+        }
+        
+        #check_pass svg {
+            width: 80%;
+            height: 80%;
+        }
+        
+        .inputform {
+            position: relative;
+        }
+        
+        
+        .dropdown {
+            position: relative;
+            display: inline-block;
+          }
+          
+          ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            position: absolute;
+            z-index: 1;
+            background-color: #f9f9f9;
+            box-sizing: border-box;
+            max-height: 300px;
+            overflow-y: auto;
+            width: 27%;
+        
+          }
+          
+          li {
+            padding: 8px;
+            cursor: pointer;
+            white-space: normal;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-wrap: break-word;
+          }
+          
+          li:hover {
+            background-color: #ddd;
+          }
+          
+          .highlight {
+            font-weight: bold;
+          }
+          
+        
+        
+        
+    </style>
+</head>
+
+<body> <label>Город отправителя</label>
+    <div class="departure_city_dropdown"> <input type="text" id="departure_city" name="departure_city" placeholder="Введите город отправителя">
+        <ul id="departure_city-list" data-cities="{{ data }}"></ul>
+    </div> <label>Город получателя</label>
+    <div class="destination_city_dropdown"> <input type="text" id="destination_city" name="destination_city" placeholder="Введите город получателя">
+        <ul id="destination_city-list" data-cities="{{ data }}"></ul>
+    </div>
+    <script>
+        let popularCities = [];
+        async function loadCitiesFromWiki() {
+            return fetchData('/get_wiki_cities');
+        }
+        
+        async function loadCities() {
+            return fetchData('/get_cities');
+        }
+        
+        async function fetchData(url) {
+            const response = await fetch(url);
+            const data = await response.json();
+            return data.data;
+        }
+        
+        function filterCities(items, input_value) {
+            const inputLower = input_value.toLowerCase();
+        
+            const [exactMatchCities, otherCities] = items.reduce(([exactMatch, others], item) => {
+          const parts = item.toLowerCase().split(', ');
+          const words = parts.flatMap(part => part.split(' '));
+        
+          if (words[0] === inputLower) {
+              exactMatch.push(item);
+          } else if (words[0].startsWith(inputLower)) {
+              isPopularCity(item) ? exactMatch.unshift(item) : others.push(item);
+          }
+        
+          return [exactMatch, others];
+            }, [[], []]);
+        
+            return [...exactMatchCities, ...otherCities];
+        }
+        
+        
+        function isPopularCity(city) {
+            return popularCities.some(popularCity => city.toLowerCase().includes(popularCity.toLowerCase()));
+        }
+        
+        let debounceTimer;
+        let departure_from_list = false;
+        let destination_from_list = false;
+        function handleInput(inputElement, list, items, input_value, otherList) {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+          const filtered_items = filterCities(items, input_value);
+          const filtered_cities = filtered_items.filter(item => item.toLowerCase().startsWith(input_value.toLowerCase()));
+          const filtered_regions = filtered_items.filter(item => !item.toLowerCase().startsWith(input_value.toLowerCase()));
+          dropdownList(list, filtered_cities, filtered_regions, input_value, inputElement, otherList);
+        
+          if (inputElement.value.trim() !== '') {
+              inputElement === departureInput ? departure_from_list = false : destination_from_list = false;
+          }
+            }, 300);
+        }
+        
+        function displayAllItems(list, display_items, input_value, inputElement) {
+            list.innerHTML = '';
+            display_items.forEach(item => {
+          const li = document.createElement('li');
+          const matcher = item.toLowerCase().match(input_value) || [];
+          const highlight_text = item.replace(new RegExp(matcher.join('|'), 'gi'), match => `<span class="highlight">${match}</span>`);
+          li.innerHTML = highlight_text;
+          li.addEventListener('click', function () {
+              inputElement.value = item;
+              list.style.display = 'none';
+              if (list === departureCityList) {
+                  departure_from_list = true;
+                  // console.log('Выбран город отправления:', item);
+              } else if (list === destinationCityList) {
+                  destination_from_list = true;
+                  // console.log('Выбран город назначения:', item);
+              }
+          });
+          list.appendChild(li);
+            });
+        }
+        function dropdownList(list, filtered_cities, filtered_regions, input_value, inputElement, otherList) {
+            let itemsToDisplay = [];
+            if (input_value !== '') {
+          if (filtered_cities.length > 0) {
+              itemsToDisplay = filtered_cities.slice(0, 5);
+          } else if (filtered_regions.length > 0) {
+              itemsToDisplay = filtered_regions.slice(0, 5);
+          }
+            }
+            list.style.display = itemsToDisplay.length > 0 ? 'block' : 'none';
+            if (itemsToDisplay.length > 0) {
+          displayAllItems(list, itemsToDisplay, input_value, inputElement);
+            }
+            if (otherList) {
+          otherList.style.display = 'none';
+            }
+        }
+        const departureInput = document.getElementById('departure_city');
+        const targetInput = document.getElementById('destination_city');
+        const departureCityList = document.getElementById('departure_city-list');
+        const destinationCityList = document.getElementById('destination_city-list');
+        async function init() {
+            const departureCities = await loadCities();
+            const destinationCities = await loadCities();
+            popularCities = await loadCitiesFromWiki();
+        
+            departureInput.addEventListener('input', function () {
+          handleInput(departureInput, departureCityList, departureCities, departureInput.value, destinationCityList);
+            });
+        
+            targetInput.addEventListener('input', function () {
+          handleInput(targetInput, destinationCityList, destinationCities, targetInput.value, departureCityList);
+            });
+        
+            document.addEventListener('click', function (event) {
+          if (event.target !== departureInput && event.target !== targetInput) {
+              departureCityList.style.display = 'none';
+              destinationCityList.style.display = 'none';
+          }
+            });
+        }
+        window.onload = init;
+    </script>
+</body>
+</html>
