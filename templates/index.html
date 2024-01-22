@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Расчет накладной</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body> 
+    <form>
+        <h1>Расчет накладной</h1>
+        <label id="box_size">Размер посылки (см)</label>
+
+        <div class="size">
+            <input type="text" id="box_length" name="box_length" placeholder="Длина">
+            <p style="color: #808080;">x</p>
+            <input type="text" id="box_width" name="box_width" placeholder="Ширина">
+            <p style="color: #808080;">x</p>
+            <input type="text" id="box_height" name="box_height" placeholder="Высота">
+        </div>    
+
+        <label>Вес посылки (кг)</label>
+        <input type="text" id="box_weight" name="bow_weight" placeholder="Введите вес посылки">
+
+        <label>Город отправителя</label>
+        <div class="departure_city_dropdown">
+
+        <input type="text" id="departure_city" name="departure_city" placeholder="Введите город отправителя">
+        <ul id="departure_city-list" data-cities="{{ data }}"></ul>
+        </div>
+
+        <label>Город получателя</label>
+        <div class="destination_city_dropdown">
+
+        <input type="text" id="destination_city" name="destination_city" placeholder="Введите город получателя">
+        <ul id="destination_city-list" data-cities="{{ data }}"></ul>
+        </div>
+
+        <label class="status" id="status"></label>
+
+        <button type="button" id="signin_button" onclick="check_inputs()">Принять</button>
+    </form>
+    <script src="/static/main.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>  
+</body>
+</html>
