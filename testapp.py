@@ -1,31 +1,9 @@
-from fastapi import FastAPI, Request
+import asyncio
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from redis.asyncio import Redis
-import aiohttp
-from bs4 import BeautifulSoup
-import re
-
-
-async def get_top_cities(url):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status != 200:
-                print(f"Ошибка {response.status}. Не удалось получить доступ к странице.")
-                return []
-            soup = BeautifulSoup(await response.text(), 'html.parser')
-            table = soup.find('table')
-            cities = []
-            for row in table.find_all('tr'):
-                cells = row.find_all(['td'])
-                for cell in cells:
-                    cell_text = cell.get_text(strip=True)
-                    if any(char.isalpha() for char in cell_text):
-                        cell_text_cleaned = re.sub(r'\[.*?\]', '', cell_text).strip()
-                        cities.append(cell_text_cleaned)
-            return cities
-
 
 
 app = FastAPI()
@@ -38,16 +16,37 @@ redis_client = Redis(
     decode_responses=True 
 )
 
-@app.get("/calculate_invoice", response_class=HTMLResponse)
-async def calculate_invoice_step1(request: Request):
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-@app.get("/get_cities", response_class=JSONResponse)
-async def get_cities():
-    data = await redis_client.lrange('cities', 0, -1)
-    return JSONResponse(content={"data": data})
+popular_cities = {'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань', 'Нижний Новгород', 'Красноярск', 'Челябинск', 'Самара', 'Уфа', 'Ростов-на-Дону', 'Краснодар', 'Омск', 'Воронеж', 'Пермь', 'Волгоград', 'Саратов', 'Тюмень', 'Тольятти', 'Барнаул', 'Махачкала', 'Ижевск', 'Хабаровск', 'Ульяновск', 'Иркутск', 'Владивосток', 'Ярославль', 'Севастополь', 'Томск', 'Ставрополь', 'Кемерово', 'Набережные Челны', 'Оренбург', 'Новокузнецк', 'Балашиха', 'Рязань', 'Чебоксары', 'Пенза', 'Липецк', 'Калининград', 'Киров', 'Астрахань', 'Тула', 'Сочи', 'Улан-Удэ', 'Курск', 'Тверь', 'Магнитогорск', 'Сургут', 'Брянск', 'Якутск', 'Иваново', 'Владимир', 'Симферополь', 'Нижний Тагил', 'Калуга', 'Белгород', 'Чита', 'Грозный', 'Волжский', 'Смоленск', 'Подольск', 'Саранск', 'Вологда', 'Курган', 'Череповец', 'Архангельск', 'Орёл', 'Владикавказ', 'Нижневартовск', 'Йошкар-Ола', 'Стерлитамак', 'Мурманск', 'Мытищи', 'Кострома', 'Новороссийск', 'Тамбов', 'Химки', 'Нальчик', 'Таганрог', 'Нижнекамск', 'Благовещенск', 'Комсомольск-на-Амуре', 'Петрозаводск', 'Люберцы', 'Королёв', 'Энгельс', 'Великий Новгород', 'Шахты', 'Братск', 'Сыктывкар', 'Ангарск', 'Старый Оскол', 'Дзержинск', 'Псков', 'Красногорск', 'Орск', 'Одинцово', 'Абакан', 'Армавир', 'Балаково', 'Бийск', 'Южно-Сахалинск', 'Уссурийск', 'Прокопьевск', 'Норильск', 'Рыбинск', 'Волгодонск', 'Альметьевск', 'Сызрань', 'Петропавловск-Камчатский', 'Каменск-Уральский', 'Новочеркасск', 'Златоуст', 'Хасавюрт', 'Северодвинск', 'Домодедово', 'Керчь', 'Миасс', 'Салават', 'Копейск', 'Пятигорск', 'Электросталь', 'Майкоп', 'Находка', 'Березники', 'Щёлково', 'Серпухов', 'Нефтекамск', 'Коломна', 'Ковров', 'Обнинск', 'Кызыл', 'Кисловодск', 'Дербент', 'Каспийск', 'Батайск', 'Нефтеюганск', 'Рубцовск', 'Назрань', 'Ессентуки', 'Новочебоксарск', 'Долгопрудный', 'Новомосковск', 'Октябрьский', 'Невинномысск', 'Раменское', 'Реутов', 'Первоуральск', 'Михайловск', 'Черкесск', 'Пушкино', 'Жуковский', 'Ханты-Мансийск', 'Димитровград', 'Артём', 'Новый Уренгой', 'Евпатория', 'Муром', 'Северск', 'Орехово-Зуево', 'Камышин', 'Мурино', 'Арзамас', 'Видное', 'Бердск', 'Элиста', 'Ногинск', 'Новошахтинск', 'Ноябрьск'}
 
-@app.get("/get_wiki_cities", response_class=JSONResponse)
-async def get_wiki_cities():
-    cities_data = await get_top_cities('https://ru.wikipedia.org/wiki/Список_городов_России_с_населением_более_100_тысяч_жителей')
-    return JSONResponse(content={"data": cities_data})
+@app.get("/search_cities", response_class=JSONResponse)
+async def search_cities(query: str):
+
+    cities_data = await redis_client.lrange('cities', 0, -1)
+
+    def split_and_check(city_data):
+        split_data = city_data.split(',')
+        if split_data[0].strip() in popular_cities:
+            return city_data
+        return None
+
+    starts_with_query = [city_data for city_data in cities_data if city_data.lower().startswith(query.lower())]
+
+    popular_matches = [split_and_check(city_data) for city_data in starts_with_query if split_and_check(city_data) is not None]
+
+    other_matches = [city_data for city_data in starts_with_query if city_data.lower().startswith(query.lower()) and split_and_check(city_data) is None]
+
+    filtered_cities = popular_matches[::-1] + other_matches
+
+    return JSONResponse(content={"data": filtered_cities[:5]})
+
+@app.post("/webhook/contract")
+async def process_contract_data(redis: Redis, userId: str, data: dict):
+    try:
+        await redis.lpush(f'invoice_step1_{userId}', data)
+        return 200
+    except Exception as e:
+        raise 500
