@@ -9,34 +9,34 @@ body {
     min-width: 100%;
     -ms-overflow-style: none;
     scrollbar-width: none;
-    scrollbar-width: thin;
+    scrollbar-width: none;
     scrollbar-color: transparent transparent;
-    /* overflow-y: scroll;  */
+    overflow-y: scroll; 
 }
 
 h1 {
     font-size: 20px;
 }
 
-/* Скрыть полосу прокрутки вебкит-браузеров (Chrome, Safari, etc.) */
 body::-webkit-scrollbar {
-    width: 0.5em; /* Ширина полосы прокрутки */
+    display: none;
   }
   
-  body::-webkit-scrollbar-track {
-    background-color: transparent; /* Цвет фона полосы прокрутки */
-  }
-  
-  body::-webkit-scrollbar-thumb {
-    background-color: transparent; /* Цвет полосы прокрутки */
-  }
-  
-  /* Скрыть полосу прокрутки в Firefox */
-  body {
-    scrollbar-width: thin;
-    scrollbar-color: transparent transparent;
-  }
-  
+.fade-in {
+animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+from {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+to {
+    opacity: 1;
+    transform: translateY(0);
+}
+}
+
 
 form {
     background-color: #fff;
@@ -174,14 +174,13 @@ input:hover {
     list-style: none;
     padding: 0;
     margin: 0;
-    position: absolute;
+    position: relative;
     z-index: 1;
     background-color: #f9f9f9;
     box-sizing: border-box;
     max-height: 300px;
     overflow-y: auto;
-    width: 27%;
-
+    width: 100%;
   }
   
   li {
