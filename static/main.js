@@ -1,107 +1,82 @@
 let departure_from_list = false;
 let destination_from_list = false;
-let popularCities = [];
-let debounceTimer;
-let filterTimer;
+let popular_cities = [];
+let filterTimeout;
+let lastInputValue = '';
+let selectedDepartureCityNumber;
+let selectedDestinationCityNumber;
 
-async function loadCitiesFromWiki() {
-    return fetchData('/get_wiki_cities');
-}
+function handleInput(inputElement, list, input_value, otherList) {
+  clearTimeout(filterTimeout);
 
-async function loadCities() {
-    return fetchData('/get_cities');
-}
+  const trimmedInputValue = input_value.trim();
 
-async function fetchData(url) {
-    const response = await fetch(url);
-    const data = await response.json();
-    return data.data;
-}
+  if (trimmedInputValue.length < 2) {
+      list.style.display = 'none';
+      return;
+  }
 
-function filterCities(items, input_value) {
-    const inputLower = input_value.toLowerCase();
+  filterTimeout = setTimeout(async () => {
+      const response = await fetch(`/search_cities?query=${encodeURIComponent(trimmedInputValue)}`);
+      const result = await response.json();
+      if (inputElement.value !== lastInputValue) {
+          return;
+      }
+      const filtered_cities = result.data;
+      dropdownList(list, filtered_cities, [], trimmedInputValue, inputElement, otherList);
+      if (trimmedInputValue !== '') {
+          inputElement === departureInput ? departure_from_list = false : destination_from_list = false;
+      }
+  }, 300);
 
-    if (inputLower.length < 2) {
-        return [];
-    }
-
-    const regex = new RegExp(`^${inputLower}`);
-
-    const [exactMatchCities, otherCities] = items.reduce(([exactMatch, others], item) => {
-        const itemLower = item.toLowerCase();
-
-        if (regex.test(itemLower)) {
-            isPopularCity(item) ? exactMatch.unshift(item) : others.push(item);
-        }
-
-        return [exactMatch, others];
-    }, [[], []]);
-
-    return [...exactMatchCities, ...otherCities];
-}
-
-function isPopularCity(city) {
-    return popularCities.some(popularCity => city.toLowerCase().includes(popularCity.toLowerCase()));
-}
-
-
-async function handleInput(inputElement, list, items, input_value, otherList) {
-    clearTimeout(debounceTimer);
-    clearTimeout(filterTimer);
-
-    debounceTimer = setTimeout(() => {
-        filterTimer = setTimeout(async () => {
-            const filtered_items = filterCities(items, input_value);
-            const filtered_cities = filtered_items.filter(item => item.toLowerCase().startsWith(input_value.toLowerCase()));
-            const filtered_regions = filtered_items.filter(item => !item.toLowerCase().startsWith(input_value.toLowerCase()));
-            dropdownList(list, filtered_cities, filtered_regions, input_value, inputElement, otherList);
-
-            if (inputElement.value.trim() !== '') {
-                inputElement === departureInput ? departure_from_list = false : destination_from_list = false;
-            }
-        }, 0);
-    }, 0);
+  lastInputValue = inputElement.value;
 }
 
 function displayAllItems(list, display_items, input_value, inputElement) {
-    list.innerHTML = '';
+  list.innerHTML = '';
+  const inputLower = input_value.toLowerCase();
+  display_items.forEach(item => {
+      const li = document.createElement('li');
+      li.className = 'dropdown-item';
+      const index = item.lastIndexOf(",");
+      const cityText = index !== -1 ? item.substring(0, index) : item;
+      const cityNumber = index !== -1 ? item.substring(index + 1) : '';
+      const matchIndex = cityText.toLowerCase().indexOf(inputLower);
+      if (matchIndex !== -1) {
+          const before = document.createTextNode(cityText.substring(0, matchIndex));
+          const match = document.createElement('span');
+          match.className = 'highlight';
+          match.textContent = cityText.substring(matchIndex, matchIndex + inputLower.length);
+          const after = document.createTextNode(cityText.substring(matchIndex + inputLower.length));
 
-    const inputLower = input_value.toLowerCase();
-
-    display_items.forEach(item => {
-        const li = document.createElement('li');
-        const lowerItem = item.toLowerCase();
-        const index = lowerItem.indexOf(inputLower);
-
-        if (index !== -1) {
-            const before = document.createTextNode(item.substring(0, index));
-            const match = document.createElement('span');
-            match.className = 'highlight';
-            match.textContent = item.substring(index, index + inputLower.length);
-            const after = document.createTextNode(item.substring(index + inputLower.length));
-
-            li.appendChild(before);
-            li.appendChild(match);
-            li.appendChild(after);
-        } else {
-            li.textContent = item;
+          li.appendChild(before);
+          li.appendChild(match);
+          li.appendChild(after);
+      } else {
+          li.textContent = cityText;
+      }
+      li.addEventListener('click', function () {
+        inputElement.value = cityText.trim();
+        list.style.display = 'none';
+        if (list === departureCityList) {
+            departure_from_list = true;
+            selectedDepartureCityNumber = cityNumber.trim();
+        } else if (list === destinationCityList) {
+            destination_from_list = true;
+            selectedDestinationCityNumber = cityNumber.trim();
         }
-
-        li.addEventListener('click', function () {
-            inputElement.value = item;
-            list.style.display = 'none';
-            if (list === departureCityList) {
-                departure_from_list = true;
-            } else if (list === destinationCityList) {
-                destination_from_list = true;
-            }
-        });
-
-        list.appendChild(li);
     });
+      list.appendChild(li);
+      li.classList.add('fade-in');
+      li.addEventListener('animationend', () => {
+          list.style.display = 'block';
+      });
+  });
 }
 
+
 function dropdownList(list, filtered_cities, filtered_regions, input_value, inputElement, otherList) {
+
     let itemsToDisplay = [];
     if (input_value !== '') {
         if (filtered_cities.length > 0) {
@@ -124,16 +99,14 @@ const targetInput = document.getElementById('destination_city');
 const departureCityList = document.getElementById('departure_city-list');
 const destinationCityList = document.getElementById('destination_city-list');
 
-async function init() {
-    const [departureCities, destinationCities] = await Promise.all([loadCities(), loadCities()]);
-    popularCities = await loadCitiesFromWiki();
+function handleInputChange(inputElement, list, otherList) {
+  const trimmedInputValue = inputElement.value.trim();
+  handleInput(inputElement, list, trimmedInputValue, otherList);
+}
 
-    const handleInputChange = (inputElement, list, items, otherList) => {
-        handleInput(inputElement, list, items, inputElement.value, otherList);
-    };
-
-    departureInput.addEventListener('input', () => handleInputChange(departureInput, departureCityList, departureCities, destinationCityList));
-    targetInput.addEventListener('input', () => handleInputChange(targetInput, destinationCityList, destinationCities, departureCityList));
+function setupEventListeners() {
+    departureInput.addEventListener('input', () => handleInputChange(departureInput, departureCityList, destinationCityList));
+    targetInput.addEventListener('input', () => handleInputChange(targetInput, destinationCityList, departureCityList));
 
     document.addEventListener('click', event => {
         if (event.target !== departureInput && event.target !== targetInput) {
@@ -141,13 +114,17 @@ async function init() {
             destinationCityList.style.display = 'none';
         }
     });
+
+    departureInput.addEventListener('blur', () => clearTimeout(filterTimeout));
+    targetInput.addEventListener('blur', () => clearTimeout(filterTimeout));
+}
+
+async function init() {
+    setupEventListeners();
 }
 
 window.onload = init;
 
-
-
-//
 
 // Блок валидации
 
@@ -209,12 +186,62 @@ function validate_inputs_value() {
     label_status.innerText = "Заполните корректные числовые значения";
     apply_error_styles_for_nymerical();
   } else {
-    label_status.innerText = "Успешно";
-    //Действия при успешном вводе
-  }
+    let urlParams = new URLSearchParams(window.location.search);
+    let userId = urlParams.get('user_id');  
+    
+    let formData = new FormData();
+    formData.append('userId', userId);
+    
+    let data = {
+        "lang": "rus",
+        "from_location": {
+            "code": parseInt(selectedDepartureCityNumber, 10),
+        },
+        "to_location": {
+            "code": parseInt(selectedDestinationCityNumber, 10)
+        },
+        "packages": [
+            {
+                "height": validateNumber(document.getElementById("box_height").value),
+                "length": validateNumber(document.getElementById("box_length").value),
+                "weight": validateNumber(document.getElementById("box_weight").value),
+                "width": validateNumber(document.getElementById("box_width").value),
+            }
+        ]
+    };
+    
+    formData.append('data', JSON.stringify(data));
+    
+    fetch('https://logist.tw1.ru/webhook/contract', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.status === 200) {
+            // window.location.href = 'tarifs.html';
+            console.log('Успешно');
+        } else if (response.status === 500) {
+            document.getElementById("status").innerText = "Сервер не отвечает"; 
+        } else if (response.status === 404) {
+            window.location.href = 'https://logist.tw1.ru/auth/login?user_id=' + encodeURIComponent(userId);
+        }
+    });
+    
+} 
+
+  
+
 
   return false;
 }
+function validateNumber(value) {
+  const normalizedValue = value.replace(',', '.').trim();
+  const parsedValue = parseFloat(normalizedValue);
+  const roundedValue = Math.round(parsedValue);
+  return roundedValue;
+}
+
+
 
 function apply_error_styles_for_nymerical() {
   for (const id of numerical) {
